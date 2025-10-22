@@ -67,15 +67,58 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 规则说明
+st.markdown('<div class="main-title">K EU 小赖版-SP广告批量模版工具</div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="rules">
+<b>使用规则 / Usage Rules:</b><br>
+1. 上传任意 .xlsx 文件（文件名不限），需包含 "广告活动名称"、"CPC"、"SKU"、"广告组默认竞价"、"预算" 列。<br>
+2. H-Q 列为关键词列（精准/广泛）。<br>
+3. 支持精准/广泛/ASIN 活动，自动生成否定关键词和商品定向。<br>
+4. 输出文件: header-K EU.xlsx（包含广告活动、广告组、关键词、否定关键词、商品定向等）。<br>
+5. 如有重复关键词，生成中止，请清理后重试。<br><br>
+<b>Upload any .xlsx file (filename flexible), must include "广告活动名称", "CPC", "SKU", "广告组默认竞价", "预算" columns.</b><br>
+<b>H-Q columns for keywords (exact/broad).</b><br>
+<b>Supports exact/broad/ASIN campaigns, auto-generates negatives and product targeting.</b><br>
+<b>Output: header-K EU.xlsx (includes campaigns, groups, keywords, negatives, product targeting).</b><br>
+<b>If duplicate keywords, generation stops; clean and retry.</b>
+</div>
+""", unsafe_allow_html=True)
+
+# 文件上传
+uploaded_file = st.file_uploader("上传 Excel 文件 (任意 .xlsx)", type=["xlsx"])
+
+if uploaded_file is not None:
+    # 保存上传的文件
+    with open("temp_survey.xlsx", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    
+    # 运行按钮
+    if st.button("生成 Header 文件"):
+        output_file = 'header-K EU.xlsx'
+        with st.spinner("正在处理文件..."):
+            result = generate_header_from_survey("temp_survey.xlsx", output_file)
+            if result and os.path.exists(result):
+                with open(result, "rb") as f:
+                    st.download_button(
+                        label="下载 header-K EU.xlsx",
+                        data=f,
+                        file_name="header-K EU.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                st.success("生成成功！请下载文件。")
+            else:
+                st.error("生成失败，请检查文件格式。")
+
 # script-K EU.py 的函数
-def generate_header_from_survey(survey_file='survey-K EU.xlsx', output_file='header-K EU.xlsx', sheet_name=0):
+def generate_header_from_survey(survey_file='temp_survey.xlsx', output_file='header-K EU.xlsx', sheet_name=0):
     try:
         # 读取 Excel 文件
         df_survey = pd.read_excel(survey_file, sheet_name=sheet_name)
-        st.write(f"成功读取文件：{survey_file}，数据形状：{df_survey.shape}")
+        st.write(f"成功读取文件，数据形状：{df_survey.shape}")
         st.write(f"列名列表: {list(df_survey.columns)}")
     except FileNotFoundError:
-        st.error(f"错误：未找到文件 {survey_file}。请确保文件已上传。")
+        st.error(f"错误：未找到文件 {survey_file}。")
         return None
     except Exception as e:
         st.error(f"读取文件时出错：{e}")
@@ -183,60 +226,4 @@ def generate_header_from_survey(survey_file='survey-K EU.xlsx', output_file='hea
             if category and category in campaign_name_normalized:
                 matched_categories.append(category)
         
-        st.write(f"  匹配的关键词类别: {matched_categories}")
-        
-        if not matched_categories:
-            st.write("  无匹配的关键词类别")
-            return [], []
-        
-        # 确定匹配类型关键词
-        match_type_keywords = []
-        if match_type == '精准':
-            match_type_keywords = ['精准', 'exact']
-        elif match_type == '广泛':
-            match_type_keywords = ['广泛', 'broad']
-        
-        # 查找匹配的列
-        matching_columns = []
-        for col in keyword_columns:
-            col_lower = str(col).lower()
-            
-            # 检查列名是否包含匹配类型关键词
-            has_match_type = any(keyword in col_lower for keyword in match_type_keywords)
-            
-            # 检查列名是否包含任何匹配的类别
-            has_category = any(category in col_lower for category in matched_categories)
-            
-            if has_match_type and has_category:
-                matching_columns.append(col)
-        
-        st.write(f"  匹配的列: {matching_columns}")
-        
-        # 提取关键词
-        keywords = []
-        for col in matching_columns:
-            keywords.extend([kw for kw in df_survey[col].dropna() if str(kw).strip()])
-        
-        # 去重
-        keywords = list(dict.fromkeys(keywords))
-        st.write(f"  关键词数量: {len(keywords)} (示例: {keywords[:2] if keywords else '无'})")
-        
-        return matching_columns, keywords
-    
-    # 函数：查找否定关键词
-    def find_neg_keywords(campaign_name, df_survey, keyword_categories, keyword_columns):
-        campaign_name_normalized = str(campaign_name).lower()
-        
-        # 确定关键词类别
-        matched_categories = []
-        for category in keyword_categories:
-            if category and category in campaign_name_normalized:
-                matched_categories.append(category)
-        
-        if not matched_categories:
-            return []
-        
-        # 查找精准关键词列
-        neg_keywords = []
-        for col in keyword_columns:
-            col_lower = str(col
+        st.write(f"  匹配的关键词类别
